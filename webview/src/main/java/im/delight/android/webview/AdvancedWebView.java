@@ -977,11 +977,13 @@ public class AdvancedWebView extends WebView {
 			return true;
 		}
 
-		url = url.replace("http://", "");
-		url = url.replace("https://", "");
+		String url_host = Uri.parse(url).getHost();
 
 		for (String hostname : mPermittedHostnames) {
-			if (url.startsWith(hostname)) {
+			if (url_host.startsWith(hostname)) {
+				return true;
+			} else if (url_host.startsWith("*") && url_host.endsWith(hostname)) {
+				// Allow wildcards for base domain support (*.example.com)
 				return true;
 			}
 		}
