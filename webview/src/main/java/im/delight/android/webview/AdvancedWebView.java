@@ -2,13 +2,13 @@ package im.delight.android.webview;
 
 /**
  * Copyright 2015 delight.im <info@delight.im>
- * <p>
+ * <p/>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
+ * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,11 @@ package im.delight.android.webview;
  * limitations under the License.
  */
 
+import android.support.v4.view.MotionEventCompat;
+import android.support.v4.view.NestedScrollingChild;
+import android.support.v4.view.NestedScrollingChildHelper;
+import android.support.v4.view.ViewCompat;
+import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.app.DownloadManager;
 import android.app.DownloadManager.Request;
@@ -75,7 +80,7 @@ import java.util.Map;
  * Advanced WebView component for Android that works as intended out of the box
  */
 @SuppressWarnings("deprecation")
-public class AdvancedWebView extends WebView {
+public class AdvancedWebView extends WebView implements NestedScrollingChild {
 
     public interface Listener {
         void onPageStarted(String url, Bitmap favicon);
@@ -98,6 +103,12 @@ public class AdvancedWebView extends WebView {
          */
         void onScrollChange(int scrollX, int scrollY, int oldScrollX, int oldScrollY);
     }
+
+    private int mLastY;
+    private final int[] mScrollOffset = new int[2];
+    private final int[] mScrollConsumed = new int[2];
+    private int mNestedOffsetY;
+    private NestedScrollingChildHelper mChildHelper;
 
     public static final String PACKAGE_NAME_DOWNLOAD_MANAGER = "com.android.providers.downloads";
     protected static final int REQUEST_CODE_FILE_PICKER = 51426;
@@ -130,18 +141,18 @@ public class AdvancedWebView extends WebView {
     protected final Map<String, String> mHttpHeaders = new HashMap<>();
 
     public AdvancedWebView(Context context) {
-        super(context);
-        init(context);
+        this(context, null);
     }
 
     public AdvancedWebView(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init(context);
+        this(context, attrs, 0);
     }
 
     public AdvancedWebView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(context);
+        mChildHelper = new NestedScrollingChildHelper(this);
+        setNestedScrollingEnabled(true);
     }
 
     public void setListener(final Activity activity, final Listener listener) {
@@ -285,9 +296,9 @@ public class AdvancedWebView extends WebView {
 
     /**
      * Adds an additional HTTP header that will be sent along with every request
-     * <p>
+     * <p/>
      * If you later want to delete an HTTP header that was previously added this way, call `removeHttpHeader()`
-     * <p>
+     * <p/>
      * The `WebView` implementation may in some cases overwrite headers that you set or unset
      *
      * @param name  the name of the HTTP header to add
@@ -299,9 +310,9 @@ public class AdvancedWebView extends WebView {
 
     /**
      * Removes one of the HTTP headers that have previously been added via `addHttpHeader()`
-     * <p>
+     * <p/>
      * If you want to unset a pre-defined header, set it to an empty string with `addHttpHeader()` instead
-     * <p>
+     * <p/>
      * The `WebView` implementation may in some cases overwrite headers that you set or unset
      *
      * @param name the name of the HTTP header to remove
@@ -1075,7 +1086,7 @@ public class AdvancedWebView extends WebView {
 
     /**
      * Returns whether file uploads can be used on the current device (generally all platform versions except for 4.4)
-     * <p>
+     * <p/>
      * On Android 4.4.3/4.4.4, file uploads may be possible but will come with a wrong MIME type
      *
      * @param needsCorrectMimeType whether a correct MIME type is required for file uploads or `application/octet-stream` is acceptable
@@ -1093,9 +1104,9 @@ public class AdvancedWebView extends WebView {
 
     /**
      * Handles a download by loading the file from `fromUrl` and saving it to `toFilename` on the external storage
-     * <p>
+     * <p/>
      * This requires the two permissions `android.permission.INTERNET` and `android.permission.WRITE_EXTERNAL_STORAGE`
-     * <p>
+     * <p/>
      * Only supported on API level 9 (Android 2.3) and above
      *
      * @param context    a valid `Context` reference
@@ -1242,4 +1253,93 @@ public class AdvancedWebView extends WebView {
         mListener.onScrollChange(l, t, oldl, oldt);
     }
 
+    @Override
+    public void setNestedScrollingEnabled(boolean enabled) {
+        mChildHelper.setNestedScrollingEnabled(enabled);
+    }
+
+    @Override
+    public boolean isNestedScrollingEnabled() {
+        return mChildHelper.isNestedScrollingEnabled();
+    }
+
+    @Override
+    public boolean startNestedScroll(int axes) {
+        return mChildHelper.startNestedScroll(axes);
+    }
+
+    @Override
+    public void stopNestedScroll() {
+        mChildHelper.stopNestedScroll();
+    }
+
+    @Override
+    public boolean hasNestedScrollingParent() {
+        return mChildHelper.hasNestedScrollingParent();
+    }
+
+    @Override
+    public boolean dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed,
+                                        int[] offsetInWindow) {
+        return mChildHelper.dispatchNestedScroll(dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, offsetInWindow);
+    }
+
+    @Override
+    public boolean dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] offsetInWindow) {
+        return mChildHelper.dispatchNestedPreScroll(dx, dy, consumed, offsetInWindow);
+    }
+
+    @Override
+    public boolean dispatchNestedFling(float velocityX, float velocityY, boolean consumed) {
+        return mChildHelper.dispatchNestedFling(velocityX, velocityY, consumed);
+    }
+
+    @Override
+    public boolean dispatchNestedPreFling(float velocityX, float velocityY) {
+        return mChildHelper.dispatchNestedPreFling(velocityX, velocityY);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        boolean rs = false;
+        final int action = MotionEventCompat.getActionMasked(event);
+        if (action == MotionEvent.ACTION_DOWN) {
+            mNestedOffsetY = 0;
+        }
+        int y = (int) event.getY();
+        event.offsetLocation(0, mNestedOffsetY);
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                rs = super.onTouchEvent(event);
+                mLastY = y;
+                break;
+            case MotionEvent.ACTION_MOVE:
+                int dy = mLastY - y;
+                int oldY = getScrollY();
+                startNestedScroll(ViewCompat.SCROLL_AXIS_VERTICAL);
+                if (dispatchNestedPreScroll(0, dy, mScrollConsumed, mScrollOffset)) {
+                    dy -= mScrollConsumed[1];
+                    event.offsetLocation(0, -mScrollOffset[1]);
+                    mNestedOffsetY += mScrollOffset[1];
+                }
+                rs = super.onTouchEvent(event);
+                mLastY = y - mScrollOffset[1];
+                if (dy < 0) {
+                    int newScrollY = Math.max(0, oldY + dy);
+                    dy -= newScrollY - oldY;
+                    if (dispatchNestedScroll(0, newScrollY - dy, 0, dy, mScrollOffset)) {
+                        event.offsetLocation(0, mScrollOffset[1]);
+                        mNestedOffsetY += mScrollOffset[1];
+                        mLastY -= mScrollOffset[1];
+                    }
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                rs = super.onTouchEvent(event);
+                stopNestedScroll();
+                break;
+        }
+        return rs;
+    }
 }
