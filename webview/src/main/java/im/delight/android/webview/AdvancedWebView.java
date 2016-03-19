@@ -20,6 +20,7 @@ import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.NestedScrollingChild;
 import android.support.v4.view.NestedScrollingChildHelper;
 import android.support.v4.view.ViewCompat;
+import android.view.ContextMenu;
 import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.app.DownloadManager;
@@ -102,6 +103,8 @@ public class AdvancedWebView extends WebView implements NestedScrollingChild {
          * @param oldScrollY Previous vertical scroll origin.
          */
         void onScrollChange(int scrollX, int scrollY, int oldScrollX, int oldScrollY);
+
+        void onCreateContextMenu(ContextMenu menu);
     }
 
     private int mLastY;
@@ -1251,6 +1254,12 @@ public class AdvancedWebView extends WebView implements NestedScrollingChild {
     protected void onScrollChanged(final int l, final int t, final int oldl, final int oldt) {
         super.onScrollChanged(l, t, oldl, oldt);
         mListener.onScrollChange(l, t, oldl, oldt);
+    }
+
+    @Override
+    protected void onCreateContextMenu(ContextMenu menu) {
+        super.onCreateContextMenu(menu);
+        mListener.onCreateContextMenu(menu);
     }
 
     @Override
